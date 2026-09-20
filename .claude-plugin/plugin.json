@@ -2,7 +2,6 @@
   "name": "review-loop",
   "displayName": "Review Loop",
   "description": "Run independent whole-repository reviews, fix verified issues, run checks, and make authorized local commits until two consecutive passes are clean.",
-  "version": "0.1.0",
   "author": {
     "name": "lab1702",
     "url": "https://github.com/lab1702"

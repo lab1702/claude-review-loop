@@ -11,8 +11,6 @@ The repository doubles as its own plugin marketplace. In Claude Code:
 /plugin install review-loop@claude-review-loop
 ```
 
-The repository is private, so the machine running Claude Code needs GitHub credentials that can read it (for example `gh auth login`).
-
 ## Use
 
 Invoke the skill explicitly, and authorize local commits on the current branch in the same request, for example:
