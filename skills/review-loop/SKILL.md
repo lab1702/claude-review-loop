@@ -1,6 +1,7 @@
 ---
 name: review-loop
 description: Run independent whole-repository reviews, fix verified issues, run checks, and make authorized local commits. Use only when explicitly invoked.
+disable-model-invocation: true
 ---
 
 # Review Loop

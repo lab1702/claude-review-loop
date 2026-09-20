@@ -18,13 +18,13 @@ Run each command separately (the `/plugin` command only accepts a single line):
 
 ## Use
 
-Invoke the skill explicitly, and authorize local commits on the current branch in the same request, for example:
+Invoke the skill explicitly with the `/review-loop` slash command, and authorize local commits on the current branch in the same request, for example:
 
 ```text
 /review-loop I authorize ordinary commits to the current branch.
 ```
 
-The skill never pushes. It requires a clean working tree on a checked-out branch and host-provided isolated subagents. See [skills/review-loop/SKILL.md](skills/review-loop/SKILL.md) for the full procedure, run boundaries, and the final report format.
+Claude never runs this skill on its own; only the slash command starts it. The skill never pushes. It requires a clean working tree on a checked-out branch and host-provided isolated subagents. See [skills/review-loop/SKILL.md](skills/review-loop/SKILL.md) for the full procedure, run boundaries, and the final report format.
 
 ## Layout
 
