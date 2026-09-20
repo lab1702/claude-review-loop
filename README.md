@@ -6,8 +6,13 @@ A Claude Code plugin that adds the `review-loop` skill: iterative, whole-reposit
 
 The repository doubles as its own plugin marketplace. In Claude Code:
 
+Run each command separately (the `/plugin` command only accepts a single line):
+
 ```text
 /plugin marketplace add lab1702/claude-review-loop
+```
+
+```text
 /plugin install review-loop@claude-review-loop
 ```
 
