@@ -30,3 +30,7 @@ The skill never pushes. It requires a clean working tree on a checked-out branch
 .claude-plugin/marketplace.json   self-hosted marketplace catalog
 skills/review-loop/SKILL.md       the skill
 ```
+
+## License
+
+[MIT](LICENSE)

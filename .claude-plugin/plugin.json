@@ -8,5 +8,11 @@
     "url": "https://github.com/lab1702"
   },
   "repository": "https://github.com/lab1702/claude-review-loop",
-  "keywords": ["review", "code-review", "quality", "automation"]
+  "license": "MIT",
+  "keywords": [
+    "review",
+    "code-review",
+    "quality",
+    "automation"
+  ]
 }
