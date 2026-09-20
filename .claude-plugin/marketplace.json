@@ -1,5 +1,6 @@
 {
   "name": "claude-review-loop",
+  "description": "Plugins by lab1702 for Claude Code: currently the review-loop skill for iterative whole-repository review with verified local fixes.",
   "owner": {
     "name": "lab1702",
     "url": "https://github.com/lab1702"
