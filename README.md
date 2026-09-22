@@ -27,7 +27,7 @@ Claude never runs this skill on its own; only the slash command starts it.
 Each pass:
 
 1. A fresh, read-only reviewer subagent, with no access to earlier conversation or findings, reviews the whole repository at the current commit.
-2. Claude verifies each finding, fixes the real ones, and runs the project's checks, reusing earlier results when the content has not changed.
+2. Claude verifies each finding, fixes the real ones (demonstrable defects or requirement violations, not style preferences or speculative hardening), and runs the project's checks, reusing earlier results when the content has not changed.
 3. Verified fixes are committed locally to the current branch.
 
 The run finishes when two passes in a row have no verified findings on the same commit, or stops as blocked after 10 passes or when something needs your attention. It ends with a report of fixes, checks, commits, and any remaining limitations.
@@ -35,7 +35,7 @@ The run finishes when two passes in a row have no verified findings on the same 
 Requirements and guarantees:
 
 - A clean working tree on a checked-out branch, with no merge, rebase, or similar operation in progress.
-- Dependency installs and checks should leave tracked files unchanged (for example, an up-to-date lockfile). Claude deletes stray untracked files that checks leave behind and lists them in the report so you can add ignore rules; changes to tracked files stop the run unless they fall within a verified fix (for example, a formatter reformatting fixed code).
+- Dependency installs and checks should leave tracked files unchanged (for example, an up-to-date lockfile). Claude deletes stray untracked files that checks leave behind and lists them in the report so you can add ignore rules; changes to tracked files stop the run unless they fall within a verified fix or are formatting-only changes to a file a fix touched (for example, a formatter reformatting fixed code or the rest of its file). A formatter hook that exits with an error only because it reformatted files does not count as a failed check.
 - Configured commit hooks run as part of the checks before each commit, through the hook framework's own command or `git hook run`; a hook that still rejects the commit stops the run.
 - A check that fails without changing files gets one unchanged rerun per pass; if it then passes, it is reported as flaky instead of stopping the run.
 - No pushes, branch switches, amends, or history rewrites. Pushing is left to you.
