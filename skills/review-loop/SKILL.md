@@ -117,7 +117,7 @@ Use network access and temporary environments to obtain routine prerequisites wh
 
 Reassess the check commands and any no-checks exception at the start of each pass and after changes to tests, check configuration, dependencies, or project instructions, including changes made by checks or hooks. Include newly available or required checks, and revoke the exception when checks now exist or are required. If the suite changes, invalidate earlier results and require the updated full suite before staging or completing the pass; for hook changes, apply [Verify commit](#verify-commit). This does not reset repair or stabilization limits.
 
-Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to unchanged content within that pass.
+Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to the exact content they ran against. If content matches the expected local HEAD's tree, you may reuse a passing full suite recorded earlier in the run for that tree, including results applied in [Verify commit](#verify-commit), instead of rerunning it, provided the full suite has not changed since. Record each reuse and the pass whose results were reused.
 
 Compare repository status and content before and after every prerequisite setup step and check command, regardless of exit status. Delete run artifacts as soon as the step or command that created them finishes, and record their paths for the final report; removed run artifacts are not content changes. Check-induced changes are otherwise allowed only within verified fixes (for example, a formatter reformatting fixed code); stop on any other change, including any setup- or check-induced change to tracked files outside verified fixes.
 
@@ -212,7 +212,7 @@ A new invocation restarts at [Launch requirements](#launch-requirements) with fr
 
 - Outcome: completed or blocked. If blocked, explain the stop reason and any prerequisites for a new run.
 - Starting branch and final commit. Mark unavailable or unverified Git values explicitly and explain why.
-- Fixes, checks and their results (or the no-checks exception), checks found flaky with their failing output, review coverage, and remaining limitations.
+- Fixes, checks and their results (or the no-checks exception), reused check results, checks found flaky with their failing output, review coverage, and remaining limitations.
 - Run artifacts deleted during the run, with a suggestion to add ignore rules for them, and any reviewer agent fallback.
 - Attempted review passes and consecutive clean passes.
 - Local commits created during the run, any uncommitted changes, and confirmation that nothing was pushed.

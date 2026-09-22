@@ -27,7 +27,7 @@ Claude never runs this skill on its own; only the slash command starts it.
 Each pass:
 
 1. A fresh, read-only reviewer subagent, with no access to earlier conversation or findings, reviews the whole repository at the current commit.
-2. Claude verifies each finding, fixes the real ones, and runs the project's checks.
+2. Claude verifies each finding, fixes the real ones, and runs the project's checks, reusing earlier results when the content has not changed.
 3. Verified fixes are committed locally to the current branch.
 
 The run finishes when two passes in a row find nothing on the same commit, or stops as blocked after 10 passes or when something needs your attention. It ends with a report of fixes, checks, commits, and any remaining limitations.
