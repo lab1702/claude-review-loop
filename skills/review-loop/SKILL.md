@@ -1,6 +1,6 @@
 ---
 name: review-loop
-description: Run independent whole-repository reviews, fix verified issues, run checks, and make authorized local commits. Use only when explicitly invoked.
+description: Run independent whole-repository reviews, fix verified issues, run checks, and make authorized local commits.
 argument-hint: I authorize ordinary commits to the current branch.
 disable-model-invocation: true
 ---
@@ -62,7 +62,7 @@ Require no merge, rebase, cherry-pick, revert, or other sequencer operation in p
 - If commit hooks are configured (for example, through `core.hooksPath`, the hooks directory from `git rev-parse --git-path hooks`, or a framework such as pre-commit, husky, or lefthook), include them in the full suite as hook checks, limited to files changed in the pass. Skip hook checks when no files changed.
   - If the framework has its own command that accepts files (for example, `pre-commit run --files <changed files>` or `lefthook run pre-commit --files <changed files>`), run it with the other checks. This surfaces hook failures and hook reformatting before staging.
   - Otherwise, run the configured `pre-commit` hook as the last command of the full suite, with exactly the verified fixes staged: `git hook run --ignore-missing pre-commit`. Staging for this check is not a content change; restage after any repair or check-induced change before rerunning it.
-  - If a `commit-msg` hook is configured, also run `git hook run --ignore-missing commit-msg -- <message file>`, with the planned commit message in a file outside the working tree.
+  - If a `commit-msg` hook is configured, also check the planned commit message, kept in a message file outside the working tree. If a `prepare-commit-msg` hook is configured, first run it on a copy of that file with `git hook run --ignore-missing prepare-commit-msg -- <copy> message`, so the check sees the message as the commit will produce it. Then run `git hook run --ignore-missing commit-msg -- <copy or message file>`.
   - If Git is older than 2.36 and lacks `git hook run`, execute the hook file from the hooks directory instead.
 - If no checks are required and no relevant checks exist, record a no-checks exception.
 - Initialize the attempted-pass and consecutive-clean counters to zero.
@@ -160,7 +160,7 @@ If launch or acceptance fails and the problem is likely to clear up in another p
 
 #### Retire reviewer
 
-If the reviewer is still running, stop it with `TaskStop`. Never reuse or resume it, including with `SendMessage`.
+A foreground reviewer has finished once its result returns. If a reviewer is still running anyway (for example, because it was moved to the background), stop it with `TaskStop`. Never reuse or resume it, including with `SendMessage`.
 
 ### Validate and fix findings
 
@@ -182,7 +182,7 @@ Otherwise, stage only verified fixes and leave no unstaged tracked changes or no
 
 ### Commit fixes
 
-Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch. Make one commit per pass whose message summarizes the verified fixes, following the repository's commit conventions. Use the message checked by any `commit-msg` hook check.
+Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch. Make one commit per pass whose message summarizes the verified fixes, following the repository's commit conventions. If a `commit-msg` hook check ran, commit with its original message file (`git commit -F <message file>`), not the copy, so `prepare-commit-msg` is applied only once.
 
 If the commit command fails, including hook rejection, inspect HEAD, the index, and working tree for the final report, then stop without repair, retry, or bypassing hooks.
 
