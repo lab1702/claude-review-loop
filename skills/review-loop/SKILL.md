@@ -125,7 +125,7 @@ Reassess the check commands and any no-checks exception at the start of each pas
 
 Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to the exact content they ran against. If content matches the expected local HEAD's tree, you may reuse a passing full suite recorded earlier in the run for that tree, including results applied in [Verify commit](#verify-commit), instead of rerunning it, provided the full suite has not changed since. Record each reuse and the pass, or the baseline suite, whose results were reused.
 
-Compare repository status and content before and after every prerequisite setup step and check command, regardless of exit status. Delete run artifacts as soon as the step or command that created them finishes, and record their paths for the final report; removed run artifacts are not content changes. Other setup- or check-induced changes must be allowed check-induced changes; stop on any other change, including any change to tracked files that a verified fix did not touch.
+Compare repository status and content before and after every prerequisite setup step and check command, regardless of exit status, and note any run artifacts it created. Keep run artifacts until all commands in the check run finish, counting prerequisite setup for that run as part of it, so later commands can use earlier outputs; then delete them, or delete them before stopping, and record their paths for the final report. Removed run artifacts are not content changes. Other setup- or check-induced changes must be allowed check-induced changes; stop on any other change, including any change to tracked files that a verified fix did not touch.
 
 The following recovery rules apply only before committing. Post-commit checks follow [Verify commit](#verify-commit).
 
@@ -200,7 +200,7 @@ If the commit command fails, including hook rejection, inspect HEAD, the index, 
 Require the starting branch to remain checked out, a clean working tree, and a new commit whose sole parent is the expected local HEAD and whose changes are all intended. Compare its tree ID (`git rev-parse 'HEAD^{tree}'`) with the recorded staged tree ID:
 
 - If they match, the recorded check results or no-checks exception apply.
-- If they differ, verify that hooks caused the differences and that they are allowed check-induced changes, then run a full suite against the new commit unless the no-checks exception applies.
+- If they differ, verify that hooks caused the differences and that they are allowed check-induced changes, then run a full suite against the new commit unless the no-checks exception applies. Omit hook checks from this suite: the commit's hooks already ran on its content, and nothing remains staged for them to check.
 
 Stop without repair or retry if verification fails, including any post-commit check failure or content change. On success, advance the expected local HEAD to the new commit.
 
