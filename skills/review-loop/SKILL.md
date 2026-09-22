@@ -133,17 +133,17 @@ The following recovery rules apply only before committing. Post-commit checks fo
 - A failure caused only by allowed check-induced changes, such as a formatter hook that exits with an error after reformatting files, needs no repair and is not a failure-repair attempt. Confirm this from the check output before treating the failure that way.
 - Allow at most two failure-repair attempts per pass. Stop if any other failure has no verified repair or would require a third attempt. Count every repair prompted by a check failure, even if the reviewer also reported the issue; fixes made only for reviewer findings do not count.
 - Once the stabilization rerun starts, any further check-induced content change stops the run, until your next edit to content (a fix or a failure-repair attempt) resets stabilization status to not started. The failure-repair limit and the stop for attempts that repeat without progress still bound the pass.
-- Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. Record each failed check that passes on the rerun without content changes as flaky, with its failing output, for the final report, even if other checks fail again; a flaky failure alone does not verify a finding or make the pass non-clean. If every failed command passes on the rerun without content changes, the check run it confirmed counts as a success without content changes; a full suite that passes this way is a passing full suite.
+- Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. Record each failed check that passes on the rerun without content changes as flaky, with its failing output, for the final report, even if other checks fail again; a flaky failure alone does not verify a finding or make the pass non-clean. If every failed command passes on the rerun without content changes, the check run it confirmed counts as a success, keeping any content changes that run made; a full suite that passes this way without content changes is a passing full suite.
 - A failed `commit-msg` or `prepare-commit-msg` check does not follow the table below. Revise the planned message file, then rerun only the message checks; other results still apply because content is unchanged. This is neither a confirmation rerun nor a failure-repair attempt. Stop if no accurate summary of the verified fixes satisfies the hook.
 
 Apply the table after all commands in the check run finish, subject to the limits above, unless a stop condition requires immediate exit:
 
 | Check-run result | Required next action |
 | --- | --- |
-| Success without content changes | Full suite: proceed. Confirmation rerun: apply this row to the check run it confirmed. Message-check rerun: earlier results still apply. Other targeted check: run the full suite before staging or completing the pass. |
+| Success without content changes | Full suite: proceed. Confirmation rerun: treat the check run it confirmed as a success and apply the matching row to it. Message-check rerun: earlier results still apply. Other targeted check: run the full suite before staging or completing the pass. |
 | Failure without content changes | If the pass's confirmation rerun is unused, run it next. Otherwise, perform one failure-repair attempt, then immediately run the full suite. |
 | Success with content changes | Run the stabilization rerun next. |
-| Failure with content changes | If the failure was caused only by allowed check-induced changes, run the stabilization rerun next. Otherwise, perform one failure-repair attempt, then immediately run the full suite. |
+| Failure with content changes | If the failure was caused only by allowed check-induced changes, run the stabilization rerun next. Otherwise, if the pass's confirmation rerun is unused and every other failure came from a check that made no content changes, run it next, keeping the check-induced changes. Otherwise, perform one failure-repair attempt, then immediately run the full suite. |
 
 ## For each review pass
 
