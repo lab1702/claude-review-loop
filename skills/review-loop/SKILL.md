@@ -58,7 +58,11 @@ Require no merge, rebase, cherry-pick, revert, or other sequencer operation in p
 - Require a clean working tree with a valid HEAD on a checked-out branch; otherwise stop.
 - Record the starting branch and set the expected local HEAD to its commit. Any branch, including `main`, is supported; no remote or upstream is required.
 - Identify required check commands (tests, lint, type checking, and builds). If none are specified, select relevant available checks and state their scope.
-- If commit hooks are configured (for example, through `core.hooksPath`, the hooks directory from `git rev-parse --git-path hooks`, or a framework such as pre-commit, husky, or lefthook), include their checks in the full suite through the framework's own command, limited to files changed in the pass (for example, `pre-commit run --files <changed files>`). This surfaces hook failures and hook reformatting before staging. Skip this check when no files changed.
+- If commit hooks are configured (for example, through `core.hooksPath`, the hooks directory from `git rev-parse --git-path hooks`, or a framework such as pre-commit, husky, or lefthook), include them in the full suite as hook checks, limited to files changed in the pass. Skip hook checks when no files changed.
+  - If the framework has its own command that accepts files (for example, `pre-commit run --files <changed files>` or `lefthook run pre-commit --files <changed files>`), run it with the other checks. This surfaces hook failures and hook reformatting before staging.
+  - Otherwise, run the configured `pre-commit` hook as the last command of the full suite, with exactly the verified fixes staged: `git hook run --ignore-missing pre-commit`. Staging for this check is not a content change; restage after any repair or check-induced change before rerunning it.
+  - If a `commit-msg` hook is configured, also run `git hook run --ignore-missing commit-msg -- <message file>`, with the planned commit message in a file outside the working tree.
+  - If Git is older than 2.36 and lacks `git hook run`, execute the hook file from the hooks directory instead.
 - If no checks are required and no relevant checks exist, record a no-checks exception.
 - Initialize the attempted-pass and consecutive-clean counters to zero.
 
@@ -176,7 +180,7 @@ Otherwise, stage only verified fixes and leave no unstaged tracked changes or no
 
 ### Commit fixes
 
-Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch. Make one commit per pass whose message summarizes the verified fixes, following the repository's commit conventions.
+Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch. Make one commit per pass whose message summarizes the verified fixes, following the repository's commit conventions. Use the message checked by any `commit-msg` hook check.
 
 If the commit command fails, including hook rejection, inspect HEAD, the index, and working tree for the final report, then stop without repair, retry, or bypassing hooks.
 
