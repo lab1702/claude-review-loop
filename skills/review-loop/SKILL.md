@@ -31,7 +31,8 @@ Each pass runs these steps in order:
 - **Full suite**: all currently required or selected relevant checks, initially identified during preparation.
 - **Check run**: a full suite or a targeted check.
 - **No-checks exception**: recorded when no checks are required and no relevant checks exist. It waives check execution only.
-- **Failure-repair attempt**: diagnosing a check failure using only existing output and static inspection, then repairing a verified repository issue.
+- **Confirmation rerun**: a targeted check that reruns only the failed check commands, unchanged, to test whether a failure is flaky.
+- **Failure-repair attempt**: diagnosing a check failure using only existing output (including any confirmation rerun) and static inspection, then repairing a verified repository issue.
 - **Stabilization rerun**: the first full suite after a check run changes content.
 - **Clean pass** and **non-clean pass**: defined in [For each review pass](#for-each-review-pass).
 
@@ -124,13 +125,14 @@ The following recovery rules apply only before committing. Post-commit checks fo
 
 - Allow at most two failure-repair attempts per pass. Stop if a failure has no verified repair or would require a third attempt. Count every repair prompted by a check failure, even if the reviewer also reported the issue; fixes made only for reviewer findings do not count.
 - Once the stabilization rerun starts, any further check-induced content change in that pass stops the run.
+- Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. If it succeeds without content changes, record the failed checks as flaky, with their failing output, for the final report; a flaky failure alone does not verify a finding or make the pass non-clean.
 
 Apply the table after all commands in the check run finish, subject to the limits above, unless a stop condition requires immediate exit:
 
 | Check-run result | Required next action |
 | --- | --- |
 | Success without content changes | Full suite: proceed. Targeted check: run the full suite before staging or completing the pass. |
-| Failure without content changes | Perform one failure-repair attempt, then immediately run the full suite. |
+| Failure without content changes | If the pass's confirmation rerun is unused, run it next. Otherwise, perform one failure-repair attempt, then immediately run the full suite. |
 | Success with content changes | Run the stabilization rerun next. |
 | Failure with content changes | Perform one failure-repair attempt, then immediately run the full suite as the stabilization rerun. |
 
@@ -146,7 +148,7 @@ Otherwise, the pass is **clean** once [Check and stage content](#check-and-stage
 
 ### Launch reviewer
 
-At the start of each pass, reset failure-repair attempts to zero and stabilization status to not started. Increment the attempted-pass count, then launch a fresh reviewer of the expected local HEAD with the [Reviewer prompt](#reviewer-prompt), as required in [Launch requirements](#launch-requirements). Run it in the foreground (`run_in_background: false`) so its result returns before you continue.
+At the start of each pass, reset failure-repair attempts to zero, the confirmation rerun to unused, and stabilization status to not started. Increment the attempted-pass count, then launch a fresh reviewer of the expected local HEAD with the [Reviewer prompt](#reviewer-prompt), as required in [Launch requirements](#launch-requirements). Run it in the foreground (`run_in_background: false`) so its result returns before you continue.
 
 ### Assess review
 
@@ -210,7 +212,7 @@ A new invocation restarts at [Launch requirements](#launch-requirements) with fr
 
 - Outcome: completed or blocked. If blocked, explain the stop reason and any prerequisites for a new run.
 - Starting branch and final commit. Mark unavailable or unverified Git values explicitly and explain why.
-- Fixes, checks and their results (or the no-checks exception), review coverage, and remaining limitations.
+- Fixes, checks and their results (or the no-checks exception), checks found flaky with their failing output, review coverage, and remaining limitations.
 - Run artifacts deleted during the run, with a suggestion to add ignore rules for them, and any reviewer agent fallback.
 - Attempted review passes and consecutive clean passes.
 - Local commits created during the run, any uncommitted changes, and confirmation that nothing was pushed.
