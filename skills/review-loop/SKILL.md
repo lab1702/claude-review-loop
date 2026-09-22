@@ -25,7 +25,8 @@ Each pass runs these steps in order:
 - **Stop**: end the entire run as **blocked** and follow [Exit and restart](#exit-and-restart).
 - **Starting branch**: the branch checked out during preparation.
 - **Expected local HEAD**: the commit HEAD must match. It starts as the starting branch's commit and advances after each verified commit.
-- **Content changes**: edits, additions, or deletions of tracked or non-ignored untracked files.
+- **Content changes**: edits, additions, or deletions of tracked or non-ignored untracked files, excluding run artifacts removed as described in [Check execution rules](#check-execution-rules).
+- **Run artifact**: a non-ignored untracked file or directory that did not exist before a prerequisite setup step or check command, was created by it, and is not part of a verified fix (for example, a coverage report or package build metadata).
 - **Clean working tree**: no staged changes, unstaged changes, or non-ignored untracked files.
 - **Full suite**: all currently required or selected relevant checks, initially identified during preparation.
 - **Check run**: a full suite or a targeted check.
@@ -38,7 +39,7 @@ Each pass runs these steps in order:
 
 Require explicit authorization for local commits on the current branch, for example: "I authorize ordinary commits to the current branch." Authorization covers the entire run; invocation alone is insufficient. If it is missing or unclear, request it and wait.
 
-Launch each reviewer with the Agent tool as a new, non-fork subagent (for example, `general-purpose`), which starts with only the prompt you give it. Do not use a `fork` subagent, continue an earlier reviewer with `SendMessage`, or shell out to `claude -p` or another CLI to obtain isolation. An instruction to "ignore previous context" does not establish isolation; sharing the repository filesystem is allowed. If the Agent tool is unavailable, stop.
+Launch each reviewer with the Agent tool as a new, non-fork subagent of type `review-loop:reviewer`, this plugin's read-only reviewer, which starts with only the prompt you give it. If that type is unavailable, use `general-purpose` and note the fallback in the final report. Do not use a `fork` subagent, continue an earlier reviewer with `SendMessage`, or shell out to `claude -p` or another CLI to obtain isolation. An instruction to "ignore previous context" does not establish isolation; sharing the repository filesystem is allowed. If the Agent tool is unavailable, stop.
 
 ## Run boundaries
 
@@ -57,6 +58,7 @@ Require no merge, rebase, cherry-pick, revert, or other sequencer operation in p
 - Require a clean working tree with a valid HEAD on a checked-out branch; otherwise stop.
 - Record the starting branch and set the expected local HEAD to its commit. Any branch, including `main`, is supported; no remote or upstream is required.
 - Identify required check commands (tests, lint, type checking, and builds). If none are specified, select relevant available checks and state their scope.
+- If commit hooks are configured (for example, through `core.hooksPath`, the hooks directory from `git rev-parse --git-path hooks`, or a framework such as pre-commit, husky, or lefthook), include their checks in the full suite through the framework's own command, limited to files changed in the pass (for example, `pre-commit run --files <changed files>`). This surfaces hook failures and hook reformatting before staging. Skip this check when no files changed.
 - If no checks are required and no relevant checks exist, record a no-checks exception.
 - Initialize the attempted-pass and consecutive-clean counters to zero.
 
@@ -105,13 +107,13 @@ or security of an in-scope component or behavior.
 
 ## Check execution rules
 
-Use network access and temporary environments to obtain routine prerequisites when needed. Stop if a required runtime, service, or other prerequisite remains unavailable.
+Use network access and temporary environments to obtain routine prerequisites when needed. Prefer setup that leaves tracked files unchanged: lockfile-respecting, frozen installs (for example, `npm ci` or `uv sync --frozen`) and environments outside the working tree or in ignored locations. Stop if a required runtime, service, or other prerequisite remains unavailable.
 
 Reassess the check commands and any no-checks exception at the start of each pass and after changes to tests, check configuration, dependencies, or project instructions, including changes made by checks or hooks. Include newly available or required checks, and revoke the exception when checks now exist or are required. If the suite changes, invalidate earlier results and require the updated full suite before staging or completing the pass; for hook changes, apply [Verify commit](#verify-commit). This does not reset repair or stabilization limits.
 
 Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to unchanged content within that pass.
 
-Compare repository status and content before and after every check command, regardless of exit status. Check-induced changes are allowed only within verified fixes (for example, a formatter reformatting fixed code); stop on any other check-induced change.
+Compare repository status and content before and after every prerequisite setup step and check command, regardless of exit status. Delete run artifacts as soon as the step or command that created them finishes, and record their paths for the final report; removed run artifacts are not content changes. Check-induced changes are otherwise allowed only within verified fixes (for example, a formatter reformatting fixed code); stop on any other change, including any setup- or check-induced change to tracked files outside verified fixes.
 
 The following recovery rules apply only before committing. Post-commit checks follow [Verify commit](#verify-commit).
 
@@ -143,7 +145,7 @@ At the start of each pass, reset failure-repair attempts to zero and stabilizati
 
 ### Assess review
 
-Wait for the reviewer to finish before editing. Accept only a completed review with no unresolved execution errors or material coverage gaps, as defined in [Reviewer prompt](#reviewer-prompt).
+Wait for the reviewer to finish before editing. Confirm that the starting branch is still checked out, HEAD matches the expected local HEAD, and the working tree and index are unchanged; otherwise stop. Accept only a completed review with no unresolved execution errors or material coverage gaps, as defined in [Reviewer prompt](#reviewer-prompt).
 
 Then [retire the reviewer](#retire-reviewer), whether or not the review was accepted.
 
@@ -204,5 +206,6 @@ A new invocation restarts at [Launch requirements](#launch-requirements) with fr
 - Outcome: completed or blocked. If blocked, explain the stop reason and any prerequisites for a new run.
 - Starting branch and final commit. Mark unavailable or unverified Git values explicitly and explain why.
 - Fixes, checks and their results (or the no-checks exception), review coverage, and remaining limitations.
+- Run artifacts deleted during the run, with a suggestion to add ignore rules for them, and any reviewer agent fallback.
 - Attempted review passes and consecutive clean passes.
 - Local commits created during the run, any uncommitted changes, and confirmation that nothing was pushed.

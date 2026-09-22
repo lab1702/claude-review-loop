@@ -16,17 +16,17 @@ The repository doubles as its own plugin marketplace. In Claude Code, run each c
 
 ## Use
 
-Invoke the skill explicitly with the `/review-loop` slash command, and authorize local commits on the current branch in the same request, for example:
+Invoke the skill explicitly with the `/review-loop:review-loop` slash command (Claude Code prefixes plugin skills with the plugin name), and authorize local commits on the current branch in the same request, for example:
 
 ```text
-/review-loop I authorize ordinary commits to the current branch.
+/review-loop:review-loop I authorize ordinary commits to the current branch.
 ```
 
 Claude never runs this skill on its own; only the slash command starts it.
 
 Each pass:
 
-1. A fresh reviewer subagent, with no access to earlier conversation or findings, reviews the whole repository at the current commit.
+1. A fresh, read-only reviewer subagent, with no access to earlier conversation or findings, reviews the whole repository at the current commit.
 2. Claude verifies each finding, fixes the real ones, and runs the project's checks.
 3. Verified fixes are committed locally to the current branch.
 
@@ -35,6 +35,8 @@ The run finishes when two passes in a row find nothing on the same commit, or st
 Requirements and guarantees:
 
 - A clean working tree on a checked-out branch, with no merge, rebase, or similar operation in progress.
+- Dependency installs and checks should leave tracked files unchanged (for example, an up-to-date lockfile). Claude deletes stray untracked files that checks leave behind and lists them in the report so you can add ignore rules; changes to tracked files stop the run.
+- Configured commit hooks run as part of the checks before each commit; a hook that still rejects the commit stops the run.
 - No pushes, branch switches, amends, or history rewrites. Pushing is left to you.
 
 See [skills/review-loop/SKILL.md](skills/review-loop/SKILL.md) for the full procedure, run boundaries, and the final report format.
@@ -45,6 +47,7 @@ See [skills/review-loop/SKILL.md](skills/review-loop/SKILL.md) for the full proc
 .claude-plugin/plugin.json        plugin manifest
 .claude-plugin/marketplace.json   self-hosted marketplace catalog
 skills/review-loop/SKILL.md       the skill
+agents/reviewer.md                read-only reviewer subagent
 ```
 
 ## License
