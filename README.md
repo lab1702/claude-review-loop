@@ -24,6 +24,8 @@ Invoke the skill explicitly with the `/review-loop:review-loop` slash command (C
 
 Claude never runs this skill on its own; only the slash command starts it.
 
+Before the first pass, Claude runs the project's checks on the starting commit. If one fails there and still fails after one unchanged rerun, the run stops before any review so you can fix the failure or its missing prerequisite first.
+
 Each pass:
 
 1. A fresh, read-only reviewer subagent, with no access to earlier conversation or findings, reviews the whole repository at the current commit.

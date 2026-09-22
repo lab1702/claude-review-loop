@@ -66,6 +66,10 @@ Require no merge, rebase, cherry-pick, revert, or other sequencer operation in p
   - If a `commit-msg` hook is configured, also check the planned commit message, kept in a message file outside the working tree. If a `prepare-commit-msg` hook is configured, first run it on a copy of that file with `git hook run --ignore-missing prepare-commit-msg -- <copy> message`, so the check sees the message as the commit will produce it. Then run `git hook run --ignore-missing commit-msg -- <copy or message file>`.
   - If Git is older than 2.36 and lacks `git hook run`, execute the hook file from the hooks directory instead.
 - If no checks are required and no relevant checks exist, record a no-checks exception.
+- Unless the no-checks exception applies, run the baseline suite: the full suite against the starting commit, before any review, following [Check execution rules](#check-execution-rules). Hook checks are skipped because no files changed. The baseline allows no repairs, and any content change other than removed run artifacts stops the run.
+  - If a check fails without content changes, rerun only the failed check commands once, unchanged. Record each check that then passes as flaky, with its failing output, for the final report. A baseline with flaky checks is not recorded as a passing full suite.
+  - Stop if any check still fails, reporting its output as a failure that already existed at the starting commit, so the user can fix it or its prerequisites before a new run.
+  - Record a baseline that passes without flaky checks or content changes as a passing full suite for the starting commit's tree.
 - Initialize the attempted-pass and consecutive-clean counters to zero.
 
 ## Reviewer prompt
@@ -119,7 +123,7 @@ Use network access and temporary environments to obtain routine prerequisites wh
 
 Reassess the check commands and any no-checks exception at the start of each pass and after changes to tests, check configuration, dependencies, or project instructions, including changes made by checks or hooks. Include newly available or required checks, and revoke the exception when checks now exist or are required. If the suite changes, invalidate earlier results and require the updated full suite before staging or completing the pass. Changes that hooks make during a commit are handled in [Verify commit](#verify-commit) instead. This does not reset repair or stabilization limits.
 
-Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to the exact content they ran against. If content matches the expected local HEAD's tree, you may reuse a passing full suite recorded earlier in the run for that tree, including results applied in [Verify commit](#verify-commit), instead of rerunning it, provided the full suite has not changed since. Record each reuse and the pass whose results were reused.
+Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to the exact content they ran against. If content matches the expected local HEAD's tree, you may reuse a passing full suite recorded earlier in the run for that tree, including results applied in [Verify commit](#verify-commit), instead of rerunning it, provided the full suite has not changed since. Record each reuse and the pass, or the baseline suite, whose results were reused.
 
 Compare repository status and content before and after every prerequisite setup step and check command, regardless of exit status. Delete run artifacts as soon as the step or command that created them finishes, and record their paths for the final report; removed run artifacts are not content changes. Other setup- or check-induced changes must be allowed check-induced changes; stop on any other change, including any change to tracked files that a verified fix did not touch.
 
@@ -217,7 +221,7 @@ A new invocation restarts at [Launch requirements](#launch-requirements) with fr
 
 - Outcome: completed or blocked. If blocked, explain the stop reason and any prerequisites for a new run.
 - Starting branch and final commit. Mark unavailable or unverified Git values explicitly and explain why.
-- Fixes, rejected findings with the reasons for rejecting them, checks and their results (or the no-checks exception), reused check results, checks found flaky with their failing output, review coverage, and remaining limitations.
+- Fixes, rejected findings with the reasons for rejecting them, the baseline suite result, checks and their results (or the no-checks exception), reused check results, checks found flaky with their failing output, review coverage, and remaining limitations.
 - Run artifacts deleted during the run, with a suggestion to add ignore rules for them, and any reviewer agent fallback.
 - Attempted review passes and consecutive clean passes.
 - Local commits created during the run, any uncommitted changes, and confirmation that nothing was pushed.
