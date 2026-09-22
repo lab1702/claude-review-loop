@@ -115,7 +115,7 @@ or security of an in-scope component or behavior.
 
 Use network access and temporary environments to obtain routine prerequisites when needed. Prefer setup that leaves tracked files unchanged: lockfile-respecting, frozen installs (for example, `npm ci` or `uv sync --frozen`) and environments outside the working tree or in ignored locations. Stop if a required runtime, service, or other prerequisite remains unavailable.
 
-Reassess the check commands and any no-checks exception at the start of each pass and after changes to tests, check configuration, dependencies, or project instructions, including changes made by checks or hooks. Include newly available or required checks, and revoke the exception when checks now exist or are required. If the suite changes, invalidate earlier results and require the updated full suite before staging or completing the pass; for hook changes, apply [Verify commit](#verify-commit). This does not reset repair or stabilization limits.
+Reassess the check commands and any no-checks exception at the start of each pass and after changes to tests, check configuration, dependencies, or project instructions, including changes made by checks or hooks. Include newly available or required checks, and revoke the exception when checks now exist or are required. If the suite changes, invalidate earlier results and require the updated full suite before staging or completing the pass. Changes that hooks make during a commit are handled in [Verify commit](#verify-commit) instead. This does not reset repair or stabilization limits.
 
 Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to the exact content they ran against. If content matches the expected local HEAD's tree, you may reuse a passing full suite recorded earlier in the run for that tree, including results applied in [Verify commit](#verify-commit), instead of rerunning it, provided the full suite has not changed since. Record each reuse and the pass whose results were reused.
 
@@ -125,7 +125,7 @@ The following recovery rules apply only before committing. Post-commit checks fo
 
 - Allow at most two failure-repair attempts per pass. Stop if a failure has no verified repair or would require a third attempt. Count every repair prompted by a check failure, even if the reviewer also reported the issue; fixes made only for reviewer findings do not count.
 - Once the stabilization rerun starts, any further check-induced content change in that pass stops the run.
-- Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. If it succeeds without content changes, record the failed checks as flaky, with their failing output, for the final report; a flaky failure alone does not verify a finding or make the pass non-clean.
+- Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. Record each failed check that passes on the rerun without content changes as flaky, with its failing output, for the final report, even if other checks fail again; a flaky failure alone does not verify a finding or make the pass non-clean.
 
 Apply the table after all commands in the check run finish, subject to the limits above, unless a stop condition requires immediate exit:
 
@@ -212,7 +212,7 @@ A new invocation restarts at [Launch requirements](#launch-requirements) with fr
 
 - Outcome: completed or blocked. If blocked, explain the stop reason and any prerequisites for a new run.
 - Starting branch and final commit. Mark unavailable or unverified Git values explicitly and explain why.
-- Fixes, checks and their results (or the no-checks exception), reused check results, checks found flaky with their failing output, review coverage, and remaining limitations.
+- Fixes, rejected findings with the reasons for rejecting them, checks and their results (or the no-checks exception), reused check results, checks found flaky with their failing output, review coverage, and remaining limitations.
 - Run artifacts deleted during the run, with a suggestion to add ignore rules for them, and any reviewer agent fallback.
 - Attempted review passes and consecutive clean passes.
 - Local commits created during the run, any uncommitted changes, and confirmation that nothing was pushed.

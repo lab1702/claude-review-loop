@@ -37,12 +37,12 @@ Requirements and guarantees:
 - A clean working tree on a checked-out branch, with no merge, rebase, or similar operation in progress.
 - Dependency installs and checks should leave tracked files unchanged (for example, an up-to-date lockfile). Claude deletes stray untracked files that checks leave behind and lists them in the report so you can add ignore rules; changes to tracked files stop the run unless they fall within a verified fix (for example, a formatter reformatting fixed code).
 - Configured commit hooks run as part of the checks before each commit, through the hook framework's own command or `git hook run`; a hook that still rejects the commit stops the run.
-- A failing check gets one unchanged rerun per pass; if it then passes, it is reported as flaky instead of stopping the run.
+- A check that fails without changing files gets one unchanged rerun per pass; if it then passes, it is reported as flaky instead of stopping the run.
 - No pushes, branch switches, amends, or history rewrites. Pushing is left to you.
 
 Repository size limit: each pass uses a single reviewer for the whole repository, and there is no option to review only part of it. If the repository is too large for one reviewer to cover, the reviewer reports a coverage gap, the review is rejected, and the run stops as blocked instead of completing. Generated and vendored content does not need detailed inspection when its inputs and integration are reviewed, so the limit depends mainly on the size of the maintained code.
 
-Trust and permissions: run the skill only on repositories you trust. Claude installs dependencies and runs the project's tests, builds, and hooks with network access, and reviewers read all repository content, which could include instructions aimed at an AI agent. A run also makes many edits and shell commands, so expect frequent approval prompts in the default permission mode. To reduce them, allow the project's check commands and local Git commands in your permission settings, but not `git push`. Bypass permissions only in an isolated environment.
+Trust and permissions: run the skill only on repositories you trust. Claude installs dependencies and runs the project's tests, builds, and hooks with network access, and reviewers read all repository content, which could include instructions aimed at an AI agent. A run also makes many edits and runs many shell commands, so expect frequent approval prompts in the default permission mode. To reduce them, allow the project's check commands and local Git commands in your permission settings, but not `git push`. Bypass permissions only in an isolated environment.
 
 See [skills/review-loop/SKILL.md](skills/review-loop/SKILL.md) for the full procedure, run boundaries, and the final report format.
 
