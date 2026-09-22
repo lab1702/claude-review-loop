@@ -40,6 +40,8 @@ Requirements and guarantees:
 - A failing check gets one unchanged rerun per pass; if it then passes, it is reported as flaky instead of stopping the run.
 - No pushes, branch switches, amends, or history rewrites. Pushing is left to you.
 
+Repository size limit: each pass uses a single reviewer for the whole repository, and there is no option to review only part of it. If the repository is too large for one reviewer to cover, the reviewer reports a coverage gap, the review is rejected, and the run stops as blocked instead of completing. Generated and vendored content does not need detailed inspection when its inputs and integration are reviewed, so the limit depends mainly on the size of the maintained code.
+
 See [skills/review-loop/SKILL.md](skills/review-loop/SKILL.md) for the full procedure, run boundaries, and the final report format.
 
 ## Layout
