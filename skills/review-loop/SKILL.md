@@ -26,7 +26,7 @@ Each pass runs these steps in order:
 - **Starting branch**: the branch checked out during preparation.
 - **Expected local HEAD**: the commit HEAD must match. It starts as the starting branch's commit and advances after each verified commit.
 - **Content changes**: edits, additions, or deletions of tracked or non-ignored untracked files, excluding run artifacts removed as described in [Check execution rules](#check-execution-rules).
-- **Run artifact**: a non-ignored untracked file or directory that did not exist before a prerequisite setup step or check command, was created by it, and is not part of a verified fix (for example, a coverage report or package build metadata).
+- **Run artifact**: a non-ignored untracked file or directory that did not exist before a check run or commit, was created during it by a prerequisite setup step, check command, or hook, and is not part of a verified fix (for example, a coverage report, a linter cache, or package build metadata). A check run here includes its prerequisite setup and any confirmation rerun of it.
 - **Allowed check-induced change**: a change a prerequisite setup step, check, or hook makes within a verified fix, or a formatting-only change it makes elsewhere in a file that a verified fix touched (for example, a formatter reformatting fixed code or the rest of its file). Allowed check-induced changes are part of the fix, not unrelated work.
 - **Clean working tree**: no staged changes, unstaged changes, or non-ignored untracked files.
 - **Full suite**: all currently required or selected relevant checks, initially identified during preparation.
@@ -34,7 +34,7 @@ Each pass runs these steps in order:
 - **No-checks exception**: recorded when no checks are required and no relevant checks exist. It waives check execution only.
 - **Confirmation rerun**: a targeted check that reruns only the failed check commands, unchanged, to test whether a failure is flaky.
 - **Failure-repair attempt**: diagnosing a check failure using only existing output (including any confirmation rerun) and static inspection, then repairing a verified repository issue.
-- **Stabilization rerun**: the first full suite after a check run changes content.
+- **Stabilization rerun**: the first full suite after a check run changes content, counting only check runs since the start of the pass or the latest failure-repair attempt.
 - **Clean pass** and **non-clean pass**: defined in [For each review pass](#for-each-review-pass).
 
 ## Launch requirements
@@ -63,13 +63,13 @@ Require no merge, rebase, cherry-pick, revert, or other sequencer operation in p
 - If commit hooks are configured (for example, through `core.hooksPath`, the hooks directory from `git rev-parse --git-path hooks`, or a framework such as pre-commit, husky, or lefthook), include them in the full suite as hook checks, limited to files changed in the pass. Skip hook checks when no files changed.
   - If the framework has its own command that accepts files (for example, `pre-commit run --files <changed files>`, or `lefthook run pre-commit --no-auto-install --no-stage-fixed --file <file>` with `--file` repeated for each changed file), run it with the other checks. This surfaces hook failures and hook reformatting before staging.
   - Otherwise, run the configured `pre-commit` hook as the last command of the full suite, with exactly the verified fixes staged: `git hook run --ignore-missing pre-commit`. Staging for this check is not a content change; restage after any repair or check-induced change before rerunning it.
-  - If a `commit-msg` hook is configured, also check the planned commit message, kept in a message file outside the working tree. If a `prepare-commit-msg` hook is configured, first run it on a copy of that file with `git hook run --ignore-missing prepare-commit-msg -- <copy> message`, so the check sees the message as the commit will produce it. Then run `git hook run --ignore-missing commit-msg -- <copy or message file>`.
+  - If a `commit-msg` hook is configured, also check the planned commit message, kept in a message file outside the working tree. If a `prepare-commit-msg` hook is configured, first run it on a copy of that file with `git hook run --ignore-missing prepare-commit-msg -- <copy> message`, so the check sees the message as the commit will produce it. Then run `git hook run --ignore-missing commit-msg -- <copy or message file>`. A failed message check is handled as described in [Check execution rules](#check-execution-rules).
   - If Git is older than 2.36 and lacks `git hook run`, execute the hook file from the hooks directory instead.
 - If no checks are required and no relevant checks exist, record a no-checks exception.
 - Unless the no-checks exception applies, run the baseline suite: the full suite against the starting commit, before any review, following [Check execution rules](#check-execution-rules). Hook checks are skipped because no files changed. The baseline allows no repairs, and any content change other than removed run artifacts stops the run.
-  - If a check fails without content changes, rerun only the failed check commands once, unchanged. Record each check that then passes as flaky, with its failing output, for the final report. A baseline with flaky checks is not recorded as a passing full suite.
+  - If a check fails without content changes, run one confirmation rerun. Record each check that then passes as flaky, with its failing output, for the final report.
   - Stop if any check still fails, reporting its output as a failure that already existed at the starting commit, so the user can fix it or its prerequisites before a new run.
-  - Record a baseline that passes without flaky checks or content changes as a passing full suite for the starting commit's tree.
+  - Record a baseline that passes without content changes, directly or with its failed checks passing on the confirmation rerun, as a passing full suite for the starting commit's tree, noting any flaky checks.
 - Initialize the attempted-pass and consecutive-clean counters to zero.
 
 ## Reviewer prompt
@@ -125,23 +125,24 @@ Reassess the check commands and any no-checks exception at the start of each pas
 
 Before staging or completing a pass with an accepted review, require a passing full suite that leaves content unchanged, unless the no-checks exception applies. Results apply only to the exact content they ran against. If content matches the expected local HEAD's tree, you may reuse a passing full suite recorded earlier in the run for that tree, including results applied in [Verify commit](#verify-commit), instead of rerunning it, provided the full suite has not changed since. Record each reuse and the pass, or the baseline suite, whose results were reused.
 
-Compare repository status and content before and after every prerequisite setup step and check command, regardless of exit status, and note any run artifacts it created. Keep run artifacts until all commands in the check run finish, counting prerequisite setup for that run as part of it, so later commands can use earlier outputs; then delete them, or delete them before stopping, and record their paths for the final report. Removed run artifacts are not content changes. Other setup- or check-induced changes must be allowed check-induced changes; stop on any other change, including any change to tracked files that a verified fix did not touch.
+Compare repository status and content before and after every prerequisite setup step and check command, regardless of exit status, and note any run artifacts it created. Keep run artifacts until the check run, including any confirmation rerun of it, finishes, so later commands can use earlier outputs; then delete them, or delete them before stopping, and record their paths for the final report. Removed run artifacts are not content changes. Other setup- or check-induced changes must be allowed check-induced changes; stop on any other change, including any change to tracked files that a verified fix did not touch.
 
 The following recovery rules apply only before committing. Post-commit checks follow [Verify commit](#verify-commit).
 
 - A failure caused only by allowed check-induced changes, such as a formatter hook that exits with an error after reformatting files, needs no repair and is not a failure-repair attempt. Confirm this from the check output before treating the failure that way.
 - Allow at most two failure-repair attempts per pass. Stop if any other failure has no verified repair or would require a third attempt. Count every repair prompted by a check failure, even if the reviewer also reported the issue; fixes made only for reviewer findings do not count.
-- Once the stabilization rerun starts, any further check-induced content change in that pass stops the run.
-- Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. Record each failed check that passes on the rerun without content changes as flaky, with its failing output, for the final report, even if other checks fail again; a flaky failure alone does not verify a finding or make the pass non-clean.
+- Once the stabilization rerun starts, any further check-induced content change stops the run, until a failure-repair attempt resets stabilization status to not started. The failure-repair limit still bounds the pass.
+- Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. Record each failed check that passes on the rerun without content changes as flaky, with its failing output, for the final report, even if other checks fail again; a flaky failure alone does not verify a finding or make the pass non-clean. If every failed command passes on the rerun without content changes, the check run it confirmed counts as a success without content changes; a full suite that passes this way is a passing full suite.
+- A failed `commit-msg` or `prepare-commit-msg` check does not follow the table below. Revise the planned message file, then rerun only the message checks; other results still apply because content is unchanged. This is neither a confirmation rerun nor a failure-repair attempt. Stop if no accurate summary of the verified fixes satisfies the hook.
 
 Apply the table after all commands in the check run finish, subject to the limits above, unless a stop condition requires immediate exit:
 
 | Check-run result | Required next action |
 | --- | --- |
-| Success without content changes | Full suite: proceed. Targeted check: run the full suite before staging or completing the pass. |
+| Success without content changes | Full suite: proceed. Confirmation rerun: apply this row to the check run it confirmed. Other targeted check: run the full suite before staging or completing the pass. |
 | Failure without content changes | If the pass's confirmation rerun is unused, run it next. Otherwise, perform one failure-repair attempt, then immediately run the full suite. |
 | Success with content changes | Run the stabilization rerun next. |
-| Failure with content changes | If the failure was caused only by allowed check-induced changes, run the stabilization rerun next. Otherwise, perform one failure-repair attempt, then immediately run the full suite as the stabilization rerun. |
+| Failure with content changes | If the failure was caused only by allowed check-induced changes, run the stabilization rerun next. Otherwise, perform one failure-repair attempt, then immediately run the full suite. |
 
 ## For each review pass
 
@@ -197,7 +198,7 @@ If the commit command fails, including hook rejection, inspect HEAD, the index, 
 
 ### Verify commit
 
-Require the starting branch to remain checked out, a clean working tree, and a new commit whose sole parent is the expected local HEAD and whose changes are all intended. Compare its tree ID (`git rev-parse 'HEAD^{tree}'`) with the recorded staged tree ID:
+Delete run artifacts that the commit's hooks created, and record their paths for the final report. Then require the starting branch to remain checked out, a clean working tree, and a new commit whose sole parent is the expected local HEAD and whose changes are all intended. Compare its tree ID (`git rev-parse 'HEAD^{tree}'`) with the recorded staged tree ID:
 
 - If they match, the recorded check results or no-checks exception apply.
 - If they differ, verify that hooks caused the differences and that they are allowed check-induced changes, then run a full suite against the new commit unless the no-checks exception applies. Omit hook checks from this suite: the commit's hooks already ran on its content, and nothing remains staged for them to check.
