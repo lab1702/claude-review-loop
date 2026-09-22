@@ -35,7 +35,7 @@ The run finishes when two passes in a row find nothing on the same commit, or st
 Requirements and guarantees:
 
 - A clean working tree on a checked-out branch, with no merge, rebase, or similar operation in progress.
-- Dependency installs and checks should leave tracked files unchanged (for example, an up-to-date lockfile). Claude deletes stray untracked files that checks leave behind and lists them in the report so you can add ignore rules; changes to tracked files stop the run.
+- Dependency installs and checks should leave tracked files unchanged (for example, an up-to-date lockfile). Claude deletes stray untracked files that checks leave behind and lists them in the report so you can add ignore rules; changes to tracked files stop the run unless they fall within a verified fix (for example, a formatter reformatting fixed code).
 - Configured commit hooks run as part of the checks before each commit; a hook that still rejects the commit stops the run.
 - No pushes, branch switches, amends, or history rewrites. Pushing is left to you.
 

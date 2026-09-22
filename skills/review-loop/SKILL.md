@@ -73,8 +73,9 @@ Applicable project requirements: <requirements or their locations>
 Applicable user requirements and constraints: <self-contained summary or None specified>
 
 Review the whole codebase at this exact commit, including source, tests,
-configuration, and scripts. Inspect committed files, not the working-tree
-snapshot or only a diff. Follow applicable project instructions.
+configuration, and scripts, not only a diff. The working tree is clean at
+this commit, so you may read tracked files directly; ignore untracked and
+ignored files. Follow applicable project instructions.
 
 Inventory generated files, vendored dependencies, binaries, and submodules.
 Review their integration and relevant correctness or security risks; inspect
@@ -175,7 +176,7 @@ Otherwise, stage only verified fixes and leave no unstaged tracked changes or no
 
 ### Commit fixes
 
-Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch.
+Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch. Make one commit per pass whose message summarizes the verified fixes, following the repository's commit conventions.
 
 If the commit command fails, including hook rejection, inspect HEAD, the index, and working tree for the final report, then stop without repair, retry, or bypassing hooks.
 
