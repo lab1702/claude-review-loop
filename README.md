@@ -32,7 +32,7 @@ Each pass:
 2. Claude verifies each finding, fixes the real ones (demonstrable defects or requirement violations, not style preferences or speculative hardening), and runs the project's checks, reusing earlier results when the content has not changed.
 3. Verified fixes are committed locally to the current branch.
 
-The run finishes when two passes in a row have no verified findings on the same commit, or stops as blocked after 10 passes or when something needs your attention. It ends with a report of fixes, checks, commits, and any remaining limitations.
+The run finishes when two passes in a row are clean on the same commit (an accepted review, no verified findings, and no content changes), or stops as blocked after 10 passes or when something needs your attention. It ends with a report of fixes, checks, commits, and any remaining limitations.
 
 Requirements and guarantees:
 

@@ -34,7 +34,7 @@ Each pass runs these steps in order:
 - **No-checks exception**: recorded when no checks are required and no relevant checks exist. It waives check execution only.
 - **Confirmation rerun**: a targeted check that reruns only the failed check commands, unchanged, to test whether a failure is flaky.
 - **Failure-repair attempt**: diagnosing a check failure using only existing output (including any confirmation rerun) and static inspection, then repairing a verified repository issue.
-- **Stabilization rerun**: the first full suite after a check run changes content, counting only check runs since the start of the pass or the latest failure-repair attempt.
+- **Stabilization rerun**: the first full suite after a check run changes content, counting only check runs since the start of the pass or your latest edit to content (a fix or a failure-repair attempt).
 - **Clean pass** and **non-clean pass**: defined in [For each review pass](#for-each-review-pass).
 
 ## Launch requirements
@@ -63,7 +63,7 @@ Require no merge, rebase, cherry-pick, revert, or other sequencer operation in p
 - If commit hooks are configured (for example, through `core.hooksPath`, the hooks directory from `git rev-parse --git-path hooks`, or a framework such as pre-commit, husky, or lefthook), include them in the full suite as hook checks, limited to files changed in the pass. Skip hook checks when no files changed.
   - If the framework has its own command that accepts files (for example, `pre-commit run --files <changed files>`, or `lefthook run pre-commit --no-auto-install --no-stage-fixed --file <file>` with `--file` repeated for each changed file), run it with the other checks. This surfaces hook failures and hook reformatting before staging.
   - Otherwise, run the configured `pre-commit` hook as the last command of the full suite, with exactly the verified fixes staged: `git hook run --ignore-missing pre-commit`. Staging for this check is not a content change; restage after any repair or check-induced change before rerunning it.
-  - If a `commit-msg` hook is configured, also check the planned commit message, kept in a message file outside the working tree. If a `prepare-commit-msg` hook is configured, first run it on a copy of that file with `git hook run --ignore-missing prepare-commit-msg -- <copy> message`, so the check sees the message as the commit will produce it. Then run `git hook run --ignore-missing commit-msg -- <copy or message file>`. A failed message check is handled as described in [Check execution rules](#check-execution-rules).
+  - If a `commit-msg` or `prepare-commit-msg` hook is configured, also check the planned commit message, kept in a message file outside the working tree. If a `prepare-commit-msg` hook is configured, run it on a copy of that file with `git hook run --ignore-missing prepare-commit-msg -- <copy> message`, so any later check sees the message as the commit will produce it. If a `commit-msg` hook is configured, then run `git hook run --ignore-missing commit-msg -- <copy or message file>`. A failed message check is handled as described in [Check execution rules](#check-execution-rules).
   - If Git is older than 2.36 and lacks `git hook run`, execute the hook file from the hooks directory instead.
 - If no checks are required and no relevant checks exist, record a no-checks exception.
 - Unless the no-checks exception applies, run the baseline suite: the full suite against the starting commit, before any review, following [Check execution rules](#check-execution-rules). Hook checks are skipped because no files changed. The baseline allows no repairs, and any content change other than removed run artifacts stops the run.
@@ -131,7 +131,7 @@ The following recovery rules apply only before committing. Post-commit checks fo
 
 - A failure caused only by allowed check-induced changes, such as a formatter hook that exits with an error after reformatting files, needs no repair and is not a failure-repair attempt. Confirm this from the check output before treating the failure that way.
 - Allow at most two failure-repair attempts per pass. Stop if any other failure has no verified repair or would require a third attempt. Count every repair prompted by a check failure, even if the reviewer also reported the issue; fixes made only for reviewer findings do not count.
-- Once the stabilization rerun starts, any further check-induced content change stops the run, until a failure-repair attempt resets stabilization status to not started. The failure-repair limit still bounds the pass.
+- Once the stabilization rerun starts, any further check-induced content change stops the run, until your next edit to content (a fix or a failure-repair attempt) resets stabilization status to not started. The failure-repair limit and the stop for attempts that repeat without progress still bound the pass.
 - Allow at most one confirmation rerun per pass. It does not count as a failure-repair attempt. Record each failed check that passes on the rerun without content changes as flaky, with its failing output, for the final report, even if other checks fail again; a flaky failure alone does not verify a finding or make the pass non-clean. If every failed command passes on the rerun without content changes, the check run it confirmed counts as a success without content changes; a full suite that passes this way is a passing full suite.
 - A failed `commit-msg` or `prepare-commit-msg` check does not follow the table below. Revise the planned message file, then rerun only the message checks; other results still apply because content is unchanged. This is neither a confirmation rerun nor a failure-repair attempt. Stop if no accurate summary of the verified fixes satisfies the hook.
 
@@ -172,7 +172,7 @@ A foreground reviewer has finished once its result returns. If a reviewer is sti
 
 ### Validate and fix findings
 
-Validate each finding against the reviewed commit and record reasons for rejections. Verify a finding only when the reviewed commit demonstrably has the defect: a concrete input, state, or sequence of events that causes incorrect behavior, a failure, or a security exposure, or content that violates an applicable project or user requirement, including documentation that contradicts actual behavior. Confirm it by inspecting the code and, where practical, with a reproduction kept outside the working tree or a regression test. Reject style or naming preferences, speculative refactoring or hardening without a demonstrated failure, and claims that rely on unsupported assumptions. Apply the same standard in every pass.
+Validate each finding against the reviewed commit and record reasons for rejections. Verify a finding only when the reviewed commit demonstrably has the defect: a concrete input, state, or sequence of events that causes incorrect behavior, a failure, or a security exposure, or content that violates an applicable project or user requirement, including documentation that contradicts actual behavior. Confirm it by inspecting the code and, where practical, with a reproduction kept outside the working tree or a regression test. Running a reproduction or regression test to confirm a finding is part of validation, not a check run: its expected failure is not a check failure and uses neither the confirmation rerun nor a failure-repair attempt. Reject style or naming preferences, speculative refactoring or hardening without a demonstrated failure, and claims that rely on unsupported assumptions. Apply the same standard in every pass.
 
 Resolve all verified findings, adding regression tests where appropriate.
 
@@ -192,9 +192,9 @@ Otherwise, stage only verified fixes and leave no unstaged tracked changes or no
 
 ### Commit fixes
 
-Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch. Make one commit per pass whose message summarizes the verified fixes, following the repository's commit conventions. If a `commit-msg` hook check ran, commit with its original message file (`git commit -F <message file>`), not the copy, so `prepare-commit-msg` is applied only once.
+Verify that the staged tree still matches the recorded tree ID, then commit to the starting branch. Make one commit per pass whose message summarizes the verified fixes, following the repository's commit conventions. If a message check ran, commit with the message file (`git commit -F <message file>`), not the copy, so `prepare-commit-msg` is applied only once.
 
-If the commit command fails, including hook rejection, inspect HEAD, the index, and working tree for the final report, then stop without repair, retry, or bypassing hooks.
+If the commit command fails, including hook rejection, delete run artifacts that the commit's hooks created and record their paths, inspect HEAD, the index, and working tree for the final report, then stop without repair, retry, or bypassing hooks.
 
 ### Verify commit
 
